@@ -1,4 +1,4 @@
-# NEXUS: Smart Network Resource Sharing and Reservation System
+# LINKCORE: Smart Network Resource Sharing and Reservation System
 
 A beginner-friendly Computer Networks mini project built with Flask, SQLite, browser HTTP, and a direct TCP socket demonstration. It models a LAN resource manager where multiple clients reserve shared printers, lab computers, projectors, and servers through one central node.
 
