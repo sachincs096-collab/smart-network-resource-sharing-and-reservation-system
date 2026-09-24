@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}NEXUS | Network Resource Sharing{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="shell">
+    {% if session.get('user_id') %}
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">N</span><span>NEXUS<span class="brand-dot">.</span></span></div>
+      <div class="identity"><span class="status-dot"></span><div><strong>{{ session.get('name') }}</strong><small>{{ session.get('role')|upper }} NODE</small></div></div>
+      <nav>
+        <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}"><span>01</span>Overview</a>
+        <a href="{{ url_for('resources_page') }}" class="{% if request.endpoint == 'resources_page' %}active{% endif %}"><span>02</span>Resources</a>
+        <a href="{{ url_for('reservations_page') }}" class="{% if request.endpoint == 'reservations_page' %}active{% endif %}"><span>03</span>Reservations</a>
+        <a href="{{ url_for('network_page') }}" class="{% if request.endpoint == 'network_page' %}active{% endif %}"><span>04</span>Network status</a>
+        {% if session.get('role') == 'admin' %}<div class="nav-label">CONTROL PLANE</div>
+        <a href="{{ url_for('admin_dashboard') }}"><span>05</span>Admin console</a>
+        <a href="{{ url_for('admin_resources') }}"><span>06</span>Manage resources</a>
+        <a href="{{ url_for('admin_users') }}"><span>07</span>Users</a>
+        <a href="{{ url_for('logs_page') }}"><span>08</span>Request logs</a>{% endif %}
+      </nav>
+      <div class="sidebar-foot"><div class="connection-line"><span class="status-dot"></span>LAN LINK ACTIVE</div><form method="post" action="{{ url_for('logout') }}"><button class="link-button" type="submit">Disconnect session ↗</button></form></div>
+    </aside>
+    {% endif %}
+    <main class="main {% if not session.get('user_id') %}public-main{% endif %}">
+      {% if session.get('user_id') %}<header class="topbar"><span class="eyebrow">LOCAL NETWORK / {{ request.path|upper }}</span><span class="mono">CLIENT {{ session.get('ip_address', request.remote_addr) }}</span></header>{% endif %}
+      {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="flash-stack">{% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>
