@@ -20,21 +20,21 @@ This is intentionally more than a reservation CRUD page:
 3. Create and activate a virtual environment:
 
 ```powershell
-py -m venv .venv
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-py -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 4. Seed the demo database:
 
 ```powershell
-py database\seed.py
+.\.venv\Scripts\python.exe -m database.seed
 ```
 
 5. Start the LAN server:
 
 ```powershell
-py app.py
+.\.venv\Scripts\python.exe app.py
 ```
 
 Open `http://127.0.0.1:5000` locally. The server prints its network endpoint in the admin dashboard. To find it directly:
@@ -62,13 +62,13 @@ On the server computer, in a second PowerShell window:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
-py network\socket_server.py
+.\.venv\Scripts\python.exe network\socket_server.py
 ```
 
 From the same machine or another LAN computer:
 
 ```powershell
-py network\socket_client.py 192.168.1.10 RESOURCE_STATUS:Printer01
+.\.venv\Scripts\python.exe network\socket_client.py 192.168.1.10 RESOURCE_STATUS:Printer01
 ```
 
 Expected response: `Printer01: AVAILABLE`. This is a direct TCP socket exchange on port `5050`; the browser workflow remains HTTP on port `5000`.
