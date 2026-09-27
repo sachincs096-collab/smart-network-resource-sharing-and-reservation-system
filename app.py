@@ -352,6 +352,133 @@ def api_reservations():
             return jsonify(error="Database error while creating reservation"), 500
 
 
+@app.route("/api/reservation-impact", methods=["POST"])
+@login_required
+def reservation_impact():
+    db = get_db()
+    payload = request.get_json(silent=True) or {}
+
+    resource_id = payload.get("resource_id")
+    reservation_date = payload.get("reservation_date")
+    start_time = payload.get("start_time")
+    end_time = payload.get("end_time")
+
+    if not all([resource_id, reservation_date, start_time, end_time]):
+        return jsonify(error="Resource, date, start time and end time are required."), 400
+
+    if start_time >= end_time:
+        return jsonify(error="End time must be after start time."), 400
+
+    resource = db.execute(
+        "SELECT * FROM resources WHERE id = ?",
+        (resource_id,)
+    ).fetchone()
+
+    if resource is None:
+        return jsonify(error="Resource not found."), 404
+
+    if resource["status"] == "OFFLINE":
+        return jsonify(
+            impact="UNAVAILABLE",
+            message="This resource is currently offline."
+        )
+
+    reservations = db.execute(
+        """
+        SELECT start_time, end_time
+        FROM reservations
+        WHERE resource_id = ?
+        AND reservation_date = ?
+        AND status != 'CANCELLED'
+        ORDER BY start_time
+        """,
+        (resource_id, reservation_date)
+    ).fetchall()
+
+    conflict = db.execute(
+        """
+        SELECT id
+        FROM reservations
+        WHERE resource_id = ?
+        AND reservation_date = ?
+        AND status != 'CANCELLED'
+        AND start_time < ?
+        AND end_time > ?
+        LIMIT 1
+        """,
+        (resource_id, reservation_date, end_time, start_time)
+    ).fetchone()
+
+    if conflict:
+        return jsonify(
+            resource=resource["name"],
+            conflict=True,
+            impact="HIGH",
+            existing_reservations=len(reservations),
+            message="This resource is already reserved during the selected time."
+        )
+
+    def to_minutes(time_value):
+        hours, minutes = map(int, time_value.split(":"))
+        return hours * 60 + minutes
+
+    requested_start = to_minutes(start_time)
+    requested_end = to_minutes(end_time)
+    requested_duration = requested_end - requested_start
+
+    booked_minutes = 0
+    for reservation in reservations:
+        booked_minutes += (
+            to_minutes(reservation["end_time"])
+            - to_minutes(reservation["start_time"])
+        )
+
+    working_minutes = 12 * 60
+    utilization_before = round((booked_minutes / working_minutes) * 100, 1)
+    utilization_after = round(
+        ((booked_minutes + requested_duration) / working_minutes) * 100, 1
+    )
+
+    if utilization_after >= 70:
+        impact = "HIGH"
+    elif utilization_after >= 40:
+        impact = "MEDIUM"
+    else:
+        impact = "LOW"
+
+    alternative = db.execute(
+        """
+        SELECT r.*
+        FROM resources r
+        WHERE r.id != ?
+        AND r.type = ?
+        AND r.status = 'AVAILABLE'
+        AND NOT EXISTS (
+            SELECT 1
+            FROM reservations v
+            WHERE v.resource_id = r.id
+            AND v.reservation_date = ?
+            AND v.status != 'CANCELLED'
+            AND v.start_time < ?
+            AND v.end_time > ?
+        )
+        ORDER BY r.name
+        LIMIT 1
+        """,
+        (resource_id, resource["type"], reservation_date, end_time, start_time)
+    ).fetchone()
+
+    return jsonify(
+        resource=resource["name"],
+        conflict=False,
+        existing_reservations=len(reservations),
+        utilization_before=utilization_before,
+        utilization_after=utilization_after,
+        impact=impact,
+        alternative=dict(alternative) if alternative else None
+    )
+
+
 @app.route("/api/network/status")
 @login_required
 def api_network_status():
